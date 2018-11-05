@@ -81,17 +81,31 @@ def apagar():
     gpio.output(ledSistema, 0)
     print("El sistema está apagado")
     print("")
+##    lcd.clear()
+##    lcd.cursor_pos = (0, 0)
+##    lcd.write_string("ILUMINACION OFF")
+##    time.sleep(.5)
+##    lcd.clear()
+##    lcd.cursor_pos = (0, 0)
+##    lcd.write_string("VENTILACION OFF")
+##    time.sleep(0.5)
 
 def write(t, i):
     """Da salida a los datos de temperatura e iluminación"""
     lcd.clear()
     lcd.cursor_pos = (0, 0)
     lcd.write_string("Temp: " + str(t) + " °C")
-##    print("Temp: " + str(t) + " °C")
+    print("Temp: " + str(t) + " °C")
     lcd.cursor_pos = (1, 0)
     lcd.write_string("Ilum: " + str(i) + "%")
-##    print("Ilum: " + str(i) + "%")
+    print("Ilum: " + str(i) + "%")
     print("")
+    writeThread = threading.Thread(target=writeFirebase, args = (t, i))
+    writeThread.start()
+
+def writeFirebase(t, i):
+    db.post('history/{}/temperatura/{}'.format(time.strftime("%d-%m-%Y"), str(time.strftime("%X"))), t)
+    db.post('history/{}/iluminacion/{}'.format(time.strftime("%d-%m-%Y"), str(time.strftime("%X"))), i)
 
 def main():
     """Proceso principal de la aplicación"""    
@@ -123,17 +137,37 @@ def main():
     if on:
         write(getTemperatura(), getIluminacion())
         gpio.output(ledSistema, 1)
-        #Temperatura
-        if (p & t & ~(u & i)):
-            gpio.output(ledVentilacion, 1)
-        else:
-            gpio.output(ledVentilacion, 0)
+        if True:
+            if i:
+                if (not gpio.input(ledIluminacion)):
+                    gpio.output(ledIluminacion, 1)
+                    lcd.clear()
+                    lcd.cursor_pos = (0, 0)
+                    lcd.write_string("ILUMINACION ON")
+                    time.sleep(.5)
+            else:
+                if (gpio.input(ledIluminacion)):
+                    gpio.output(ledIluminacion, 0)
+                    lcd.clear()
+                    lcd.cursor_pos = (0, 0)
+                    lcd.write_string("ILUMINACION OFF")
+                    time.sleep(.5)
+                
 
-        #Iluminación
-        if(p & i):
-            gpio.output(ledIluminacion, 1)
-        else:
-            gpio.output(ledIluminacion, 0)
+            if (t and not (u and i)):
+                if (not gpio.input(ledVentilacion)):
+                    gpio.output(ledVentilacion, 1)
+                    lcd.clear()
+                    lcd.cursor_pos = (0, 0)
+                    lcd.write_string("VENTILACION ON")
+                    time.sleep(.5)
+            else:
+                if (gpio.input(ledVentilacion)):                    
+                    gpio.output(ledVentilacion, 0)
+                    lcd.clear()
+                    lcd.cursor_pos = (0, 0)
+                    lcd.write_string("VENTILACION OFF")
+                    time.sleep(.5)
     else:
         apagar()    
 
